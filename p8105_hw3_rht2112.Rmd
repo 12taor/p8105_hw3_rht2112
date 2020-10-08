@@ -95,7 +95,7 @@ Read in and tidy accel_data.csv
 accel <- read_csv("./data/accel_data.csv") %>%
   pivot_longer(
     activity.1:activity.1440,
-    names_to = "activity_min",
+    names_to = "min",
     names_prefix = "activity.",
     values_to = "activity_count"
   )
@@ -106,21 +106,23 @@ week_df <-
     day = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
   )
 
-accel %>% 
-  left_join(week_df, by = "day") %>% 
+accel <- 
+  left_join(accel, week_df, by = "day") %>% 
   arrange(week, weekday, .by_group = TRUE) %>% 
-  select(-weekday) %>% 
   mutate(
     day_type = 
       as.factor(ifelse(day %in% c("Saturday", "Sunday"), "weekend", "weekday")),
     day = 
       as.factor(day),
-    activity_min =
-      as.integer(activity_min),
+    min =
+      as.integer(min),
+    hour = 
+      min %% 24,
     week =
       as.factor(week)
   ) %>% 
-  relocate(day_id, week, day, day_type)
+  relocate(day_id, week, day, day_type, hour, min) %>% 
+  select(-weekday)
 
 ```
 
@@ -132,12 +134,22 @@ Aggregate minutes to days
 accel %>% 
   group_by(week, day) %>% 
   summarize(activity_count_day = sum(activity_count)) %>% 
-  arrange(week, day)
+  arrange(week, day) %>% 
+  knitr::kable(digits = 1)
 ```
 
 Trends?
 
-```{r}
 
+
+```{r}
+accel %>% 
+  group_by(week, day, hour) %>% 
+  mutate(
+    activity_count_hour = 
+      sum(activity_count)
+  ) %>% 
+  ggplot(aes(x = hour, y = activity_count_hour, color = day)) +
+  geom_smooth()
 ```
 
