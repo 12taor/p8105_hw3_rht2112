@@ -126,7 +126,7 @@ accel <-
 
 ```
 
-Describe the dataset above.
+Describe the dataset above. 
 
 Aggregate minutes to days
 
@@ -136,11 +136,12 @@ accel %>%
   summarize(activity_count_day = sum(activity_count)) %>% 
   arrange(week, day) %>% 
   knitr::kable(digits = 1)
+#why isn't this table in correct weekday order?
 ```
 
 Trends?
 
-
+Create a plot showing how activity count changes over the course of the dayfor each day of the week.
 
 ```{r}
 accel %>% 
@@ -151,5 +152,42 @@ accel %>%
   ) %>% 
   ggplot(aes(x = hour, y = activity_count_hour, color = day)) +
   geom_smooth()
+#why are the weekdays in a weird order still?
+#format labels to be a little nicer
 ```
 
+# Problem 3
+
+```{r}
+data("ny_noaa")
+```
+
+```{r}
+ny_noaa %>% 
+  separate(date, into = c("year", "month", "day"), sep = ) %>% 
+  mutate(
+    year =
+      as.numeric(year),
+    month =
+      as.numeric(month),
+    day = 
+      as.numeric(day),
+    prcp =
+      10*prcp,
+    tmax =
+      10*(as.numeric(tmax)),
+    tmin =
+      10*(as.numeric(tmin))
+  )
+#how best to assess missingness?
+```
+
+Snow
+
+```{r}
+ny_noaa %>% 
+  count(snow) %>% 
+  arrange(-n)
+```
+
+The most commonly observed values are 0 and NA. This is because for most days of the year, there is not snow.
