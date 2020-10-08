@@ -89,3 +89,55 @@ instacart %>%
 
 ## Problem 2
 
+Read in and tidy accel_data.csv
+
+```{r}
+accel <- read_csv("./data/accel_data.csv") %>%
+  pivot_longer(
+    activity.1:activity.1440,
+    names_to = "activity_min",
+    names_prefix = "activity.",
+    values_to = "activity_count"
+  )
+
+week_df <- 
+  tibble(
+    weekday = c(1,2,3,4,5,6,7),
+    day = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+  )
+
+accel %>% 
+  left_join(week_df, by = "day") %>% 
+  arrange(week, weekday, .by_group = TRUE) %>% 
+  select(-weekday) %>% 
+  mutate(
+    day_type = 
+      as.factor(ifelse(day %in% c("Saturday", "Sunday"), "weekend", "weekday")),
+    day = 
+      as.factor(day),
+    activity_min =
+      as.integer(activity_min),
+    week =
+      as.factor(week)
+  ) %>% 
+  relocate(day_id, week, day, day_type)
+
+```
+
+Describe the dataset above.
+
+Aggregate minutes to days
+
+```{r}
+accel %>% 
+  group_by(week, day) %>% 
+  summarize(activity_count_day = sum(activity_count)) %>% 
+  arrange(week, day)
+```
+
+Trends?
+
+```{r}
+
+```
+
