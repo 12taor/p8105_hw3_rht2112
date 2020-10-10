@@ -8,6 +8,7 @@ output: github_document
 
 library(tidyverse)
 library(p8105.datasets)
+library(patchwork)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -126,7 +127,7 @@ accel <-
 
 ```
 
-Describe the dataset above. 
+The accel dataset has accelerometer data collected on a 63 year-old male with BMI 25, who was admitted to the Advanced Cardiac CareCenter of CUIMC, and diagnosed with congestive heart failure. The original dataset showed activity counts for each minute of the day, as measured by the accelerometer. The cleaned dataset has `r nrow(accel)` rows and `r ncol(accel)` columns, and variables include day_id, week, day, day_type, hour, min, and activity_count. 'day_id' is a unique identifier for each day in the dataset. 'week' shows the week of observation, from weeks 1-5. 'day' indicates the day of the week of the observation (Mon-Sun), and 'day_type' indicates if the day was a weekday or a weekend. 'hour' includes the hour of the 24-hour day (0-23), and 'min' is the minute of the day (1-1440). 'activity_count' is the activity count measured by the accelerometer for each minute of the day.
 
 Aggregate minutes to days
 
@@ -134,14 +135,13 @@ Aggregate minutes to days
 accel %>% 
   group_by(week, day) %>% 
   summarize(activity_count_day = sum(activity_count)) %>% 
-  arrange(week, day) %>% 
+  arrange(activity_count_day) %>% 
   knitr::kable(digits = 1)
-#why isn't this table in correct weekday order?
 ```
 
-Trends?
+I can see some interesting trends by ordering the table summarizing activity count by day by activity count. NSome notable outliers are Saturday of weeks 4 and 5, where the activity count was only 1440. Since there are 1440 minutes in a day, and it seems the lowest value of of activity_count per minute, this could be of some concern, as it indicates extremely low activity. One plausible explanation could be accelerometer malfunction - perhaps it was not properly reading the patient's activity on those days, or was disconnected somehow. Fridays seem to be relatively high-activity days.
 
-Create a plot showing how activity count changes over the course of the dayfor each day of the week.
+Create a plot showing how activity count changes over the course of the day for each day of the week.
 
 ```{r}
 accel %>% 
@@ -151,10 +151,16 @@ accel %>%
       sum(activity_count)
   ) %>% 
   ggplot(aes(x = hour, y = activity_count_hour, color = day)) +
-  geom_smooth()
-#why are the weekdays in a weird order still?
-#format labels to be a little nicer
+  geom_smooth() +
+  labs(
+    title = "24-hour changes in activity count by weekday",
+    x = "Hour (0-23)",
+    y = "Average Activity Count",
+    caption = "How does activity change over the course of the day?"
+  ) 
 ```
+
+From this plot it looks like Saturdays have the lowest average activity counts, and Fridays have the highest, overall. On Saturdays there is a slope downward from midnight to 5am, and a plateau after around 7am. On Fridays there is a steady increase in activity from midnight to 10am, a plateau from 10am to 5pm, and a decrease in activity from 5pm to midnight. For all other days of the week, activity is variable throught the day, with the greatest amplitude in variability on Wednesdays.
 
 # Problem 3
 
@@ -163,8 +169,8 @@ data("ny_noaa")
 ```
 
 ```{r}
-ny_noaa %>% 
-  separate(date, into = c("year", "month", "day"), sep = ) %>% 
+ny_noaa <- 
+  separate(ny_noaa, date, into = c("year", "month", "day"), sep = ) %>% 
   mutate(
     year =
       as.numeric(year),
@@ -173,16 +179,21 @@ ny_noaa %>%
     day = 
       as.numeric(day),
     prcp =
-      10*prcp,
+      0.001*prcp,
     tmax =
-      10*(as.numeric(tmax)),
+      0.1*(as.numeric(tmax)),
     tmin =
-      10*(as.numeric(tmin))
+      0.1*(as.numeric(tmin)),
+    snow =
+      0.01*(snow),
+    snwd = 
+      0.01*(snwd)
   )
-#how best to assess missingness?
 ```
 
-Snow
+This dataset has climate information from all NY state weather stations from January 1, 1981 through December 31, 2010. The ny_noaa dataset has `r nrow(ny_noaa)` rows and `r ncol(ny_noaa)` columns. The column names in the dataset include 'id', 'year', 'month', 'day', 'prcp', 'snow', 'snwd', 'tmax', and 'tmin'. 'id' includes the id number of the weather station. 'year', 'month', and 'day', all show the date informaton for each observation. 'prcp' is the daily precipitation in cm. 'snow' is the daily snowfall in cm. 'snwd' is the daily snow depth in cm. 'tmax' is the daily maximum temperature in ªC and 'tmin' is the daily minimum temperature in °C. There are many missing values because each weather station may only collect a subset of the variables included in the full dataset.
+
+What are the most commonly observed values for snowfall?
 
 ```{r}
 ny_noaa %>% 
@@ -190,4 +201,70 @@ ny_noaa %>%
   arrange(-n)
 ```
 
-The most commonly observed values are 0 and NA. This is because for most days of the year, there is not snow.
+The most commonly observed values are 0 and NA. It makes sense that the most common value is 0, because for most days of the year, there is not snow. It also makes sense that the second most common value is 'NA' because, as stated above, there is a fair amount of missingness in this dataset due to differences in which weather variables each weather station collects data on.
+
+Make a two-panel plot of the average max temp in July and January in each station across years.
+
+```{r}
+jan <- 
+  ny_noaa %>% 
+  filter(month == 1) %>% 
+  group_by(id, year, month) %>% 
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>% 
+  ggplot(aes(x = year, y = mean_tmax, group = id, color = id)) +
+  geom_point() +
+  theme(legend.position = "none") +
+  ylim(-15, 35) +
+  labs(
+    title = "January",
+    x = "Year",
+    y = "Mean Maximum Temperature (°C)"
+  ) 
+
+july <- 
+  ny_noaa %>% 
+  filter(month == 7) %>% 
+  group_by(id, year, month) %>% 
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>% 
+  ggplot(aes(x = year, y = mean_tmax, group = id, color = id)) +
+  geom_point() +
+  theme(legend.position = "none") +
+  ylim(-15, 35) +
+  labs(
+    title = "July",
+    x = "Year",
+    y = "Mean Maximum Temperature (°C)",
+    caption = "Mean max temp from 1981-2010 from individual weather stations in NYS"
+    ) 
+
+jan + july
+
+```
+
+The mean max temp appears more variable in January than in July. There do appear to be certain years that have colder winters than others, and certain years that have warmer summers than others, overall (each year seems to have its own distribution of mean max daily temperatures). In January in the early 1980's there are a couple low outliers. There is also one low outlier in July in the late 1980's, which appears to show a mean maximum temperature of around 14°C, when the majority of the weather stations have mean maximum temperatures between 29 and 32°C.
+
+Make a two-panel plot of tmax vs. tmn for the full dataset.
+
+```{r}
+tmin_tmax_p <- 
+  ny_noaa %>% 
+  ggplot(aes(x = tmin, y = tmax, na.rm = TRUE)) +
+  geom_hex() +
+  theme(legend.position = "right") +
+  labs(
+    x = "Minimum daily temperature (°C)",
+    y = "Maximum Daily Temperature (°C)"
+  ) 
+
+snow_dist_p <- 
+  ny_noaa %>% 
+  ggplot(aes(x = snow)) +
+  geom_density() +
+  ylim(0,100) +
+  facet_grid(.~year,) +
+  facet_wrap(vars(year))
+
+tmin_tmax_p + snow_dist_p
+
+```
+
